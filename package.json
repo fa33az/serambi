@@ -1,0 +1,17 @@
+{
+  "name": "serambi",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "node scripts/check-content.mjs && astro build",
+    "preview": "astro preview",
+    "check-content": "node scripts/check-content.mjs",
+    "extract": "python3 scripts/extract.py"
+  },
+  "dependencies": {
+    "@fontsource/eb-garamond": "^5.3.0",
+    "astro": "^7.3.5"
+  }
+}
