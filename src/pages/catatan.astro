@@ -1,0 +1,196 @@
+---
+import Base from '../layouts/Base.astro';
+import { books } from '../data/books';
+import { chapterTitles } from '../lib/content';
+
+const meta = Object.fromEntries(
+  books.map((b) => [
+    b.slug,
+    { title: b.title.id, author: b.author, chapters: chapterTitles(b.slug, 'id'), questions: b.questions.map((q) => q.id) },
+  ]),
+);
+---
+<Base title="Buku Kutipan" description="Kutipan, renungan, dan garis pensilmu. Tersimpan hanya di perangkat ini.">
+  <main class="page notes">
+    <div class="page-top">
+      <a class="link" href="/">← Serambi</a>
+      <button class="link" id="export">Unduh sebagai teks</button>
+    </div>
+
+    <h1>Buku Kutipan</h1>
+    <p class="lede soft">Yang kamu salin, yang kamu tulis, dan yang kamu garis bawahi. Semuanya hanya tersimpan di perangkat ini.</p>
+
+    <nav class="tabs" role="tablist" aria-label="Jenis catatan">
+      <button role="tab" data-tab="kutipan" aria-selected="true">Kutipan</button>
+      <button role="tab" data-tab="renungan" aria-selected="false">Renungan</button>
+      <button role="tab" data-tab="pensil" aria-selected="false">Garis pensil</button>
+    </nav>
+
+    <section id="kutipan" class="panel" role="tabpanel"></section>
+    <section id="renungan" class="panel" role="tabpanel" hidden></section>
+    <section id="pensil" class="panel" role="tabpanel" hidden></section>
+  </main>
+
+  <script is:inline type="application/json" id="meta" set:html={JSON.stringify(meta)} />
+</Base>
+
+<script>
+  import { get, set, quotes, setQuotes, reflections, marks, setMarks, dateId, type Quote, type Mark } from '../scripts/store';
+
+  type Meta = Record<string, { title: string; author: string; chapters: string[]; questions: string[] }>;
+  const meta: Meta = JSON.parse(document.getElementById('meta')!.textContent!);
+  const slugs = Object.keys(meta);
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const src = (slug: string, ch: number) =>
+    `<a class="link" href="/baca/${slug}/#bab-${ch}"><em>${meta[slug].title}</em>, ${meta[slug].chapters[ch - 1] ?? ''}</a>`;
+
+  const empty = (text: string) => `<p class="empty">${text}</p>`;
+
+  function renderQuotes() {
+    const q = quotes();
+    const el = document.getElementById('kutipan')!;
+    if (!q.length) {
+      el.innerHTML = empty('Belum ada kutipan. Saat membaca, tandai sebuah kalimat lalu pilih <em>Salin</em>. Kamu akan diajak mengetiknya ulang, pelan-pelan, seperti menyalin dengan tangan.');
+      return;
+    }
+    el.innerHTML = q
+      .map(
+        (x: Quote) => `<article class="q" data-id="${x.id}">
+          <blockquote>${esc(x.text)}</blockquote>
+          <p class="src">${meta[x.slug]?.author ?? ''} · ${src(x.slug, x.ch)}</p>
+          <p class="when">${x.copied ? 'disalin' : 'disimpan'} ${dateId(x.t)} <button class="del link" data-del="${x.id}">hapus</button></p>
+        </article>`,
+      )
+      .join('<div class="orn">·</div>');
+  }
+
+  function renderReflections() {
+    const el = document.getElementById('renungan')!;
+    const rows: string[] = [];
+    for (const slug of slugs) {
+      const r = reflections(slug);
+      for (const [ch, v] of Object.entries(r).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+        rows.push(`<article class="r">
+          <p class="question">${meta[slug].questions[Number(ch) - 1] ?? ''}</p>
+          <div class="answer">${esc(v.text).replace(/\n/g, '<br>')}</div>
+          <p class="src">${src(slug, Number(ch))} · ${dateId(v.t)}</p>
+        </article>`);
+      }
+    }
+    el.innerHTML = rows.length
+      ? rows.join('<div class="orn">·</div>')
+      : empty('Belum ada renungan. Di akhir setiap bab ada satu pertanyaan dan sedikit ruang untuk menulis, kalau kamu mau.');
+  }
+
+  function renderMarks() {
+    const el = document.getElementById('pensil')!;
+    const rows: string[] = [];
+    for (const slug of slugs) {
+      const ms = marks(slug).sort((a, b) => a.ch - b.ch || a.b - b.b || a.s - b.s);
+      if (!ms.length) continue;
+      rows.push(`<h2 class="book-h">${meta[slug].title}</h2>`);
+      rows.push(
+        ...ms.map(
+          (m: Mark) => `<article class="m">
+            <p class="line">${esc(m.text)}</p>
+            ${m.note ? `<p class="note">${esc(m.note)}</p>` : ''}
+            <p class="src">${src(slug, m.ch)} <button class="del link" data-mark="${slug}:${m.id}">hapus</button></p>
+          </article>`,
+        ),
+      );
+    }
+    el.innerHTML = rows.length ? rows.join('') : empty('Belum ada garis pensil. Tandai kalimat saat membaca dan pilih <em>Garis pensil</em> atau <em>Catatan</em>.');
+  }
+
+  function renderAll() {
+    renderQuotes();
+    renderReflections();
+    renderMarks();
+  }
+  renderAll();
+
+  // tab
+  const tabs = document.querySelectorAll<HTMLButtonElement>('[role=tab]');
+  function select(name: string) {
+    tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
+    document.querySelectorAll<HTMLElement>('.panel').forEach((p) => (p.hidden = p.id !== name));
+    set('notes-tab', name);
+  }
+  tabs.forEach((t) => t.addEventListener('click', () => select(t.dataset.tab!)));
+  select(get('notes-tab', 'kutipan'));
+
+  // hapus: klik sekali untuk bertanya, sekali lagi untuk yakin
+  document.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.del');
+    if (!b) return;
+    if (!b.classList.contains('sure')) {
+      b.classList.add('sure');
+      b.textContent = 'yakin?';
+      setTimeout(() => {
+        b.classList.remove('sure');
+        b.textContent = 'hapus';
+      }, 2600);
+      return;
+    }
+    if (b.dataset.del) setQuotes(quotes().filter((q) => q.id !== b.dataset.del));
+    if (b.dataset.mark) {
+      const [slug, id] = b.dataset.mark.split(':');
+      setMarks(slug, marks(slug).filter((m) => m.id !== id));
+    }
+    renderAll();
+  });
+
+  // unduh semuanya sebagai teks biasa
+  document.getElementById('export')!.addEventListener('click', () => {
+    const out: string[] = ['# Buku Kutipan', '', `Diunduh dari Serambi, ${dateId(Date.now())}.`, ''];
+    const q = quotes();
+    if (q.length) {
+      out.push('## Kutipan', '');
+      q.forEach((x) => out.push(`> ${x.text}`, '', `— ${meta[x.slug]?.author}, ${meta[x.slug]?.title}, ${meta[x.slug]?.chapters[x.ch - 1] ?? ''}`, ''));
+    }
+    const refl: string[] = [];
+    for (const slug of slugs) {
+      for (const [ch, v] of Object.entries(reflections(slug))) {
+        refl.push(`**${meta[slug].questions[Number(ch) - 1] ?? ''}**`, '', v.text, '', `(${meta[slug].title}, ${meta[slug].chapters[Number(ch) - 1] ?? ''})`, '');
+      }
+    }
+    if (refl.length) out.push('## Renungan', '', ...refl);
+    const ms: string[] = [];
+    for (const slug of slugs) {
+      for (const m of marks(slug)) {
+        ms.push(`- “${m.text}” (${meta[slug].title}, ${meta[slug].chapters[m.ch - 1] ?? ''})` + (m.note ? `\n  Catatan: ${m.note}` : ''));
+      }
+    }
+    if (ms.length) out.push('## Garis pensil', '', ...ms, '');
+    const blob = new Blob([out.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'buku-kutipan-serambi.md';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+</script>
+
+<style>
+  h1 { font-weight: 400; font-size: 2.2rem; line-height: 1.1; }
+  .lede { margin-top: .6rem; font-style: italic; }
+  .tabs { display: flex; gap: 1.6rem; margin: 2.6rem 0 2rem; border-bottom: 1px solid var(--line); }
+  .tabs button { padding: .4rem 0; color: var(--soft); border-bottom: 1px solid transparent; margin-bottom: -1px; transition: color .3s ease, border-color .3s ease; }
+  .tabs button[aria-selected='true'] { color: var(--ink); border-bottom-color: var(--accent); }
+  .panel :global(.orn) { margin: 1.8rem 0; }
+  .panel :global(.empty) { font-style: italic; color: var(--soft); max-width: 28rem; }
+  .panel :global(blockquote) { font-size: 1.2rem; line-height: 1.55; }
+  .panel :global(.src) { margin-top: .6rem; font-size: .88rem; color: var(--soft); }
+  .panel :global(.src a) { text-decoration: none; }
+  .panel :global(.when) { font-size: .78rem; color: var(--faint); margin-top: .2rem; }
+  .panel :global(.del) { margin-left: .6rem; font-size: .78rem; color: var(--faint); }
+  .panel :global(.del.sure) { color: var(--accent); }
+  .panel :global(.question) { font-style: italic; color: var(--soft); }
+  .panel :global(.answer) { margin-top: .6rem; padding-left: 1rem; border-left: 1px solid var(--line); }
+  .panel :global(.book-h) { font-weight: 400; font-size: .72rem; letter-spacing: .28em; text-transform: uppercase; color: var(--soft); margin: 2.2rem 0 .6rem; }
+  .panel :global(.book-h:first-child) { margin-top: 0; }
+  .panel :global(.m) { padding: .8rem 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); }
+  .panel :global(.m .line) { line-height: 1.55; }
+  .panel :global(.m .note) { margin-top: .4rem; font-style: italic; color: var(--accent); font-size: .95rem; }
+  .panel :global(.m .src) { margin-top: .3rem; }
+</style>

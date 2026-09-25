@@ -1,0 +1,57 @@
+---
+import '@fontsource/eb-garamond/400.css';
+import '@fontsource/eb-garamond/400-italic.css';
+import '@fontsource/eb-garamond/500.css';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+  bodyClass?: string;
+}
+const { title, description = 'Serambi: tempat membaca filsafat pelan-pelan, dalam bahasa Indonesia dan Inggris.', bodyClass } = Astro.props;
+const fullTitle = title ? `${title} · Serambi` : 'Serambi';
+---
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f4ede0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <script is:inline>
+      (function () {
+        var d = document.documentElement;
+        function get(k, def) {
+          try { var v = localStorage.getItem('serambi:' + k); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
+        }
+        var m = get('mood', 'auto');
+        if (m === 'auto') {
+          var h = new Date().getHours();
+          m = h >= 5 && h < 15 ? 'pagi' : h >= 15 && h < 19 ? 'senja' : 'lilin';
+        }
+        d.dataset.mood = m;
+        d.dataset.size = get('size', 'm');
+        var tc = { pagi: '#f4ede0', senja: '#eadcc2', lilin: '#1b1713' }[m];
+        var meta = document.querySelector('meta[name=theme-color]');
+        if (meta) meta.setAttribute('content', tc);
+      })();
+    </script>
+    <slot name="head" />
+  </head>
+  <body class={bodyClass}>
+    <div class="vignette" aria-hidden="true"></div>
+    <slot />
+    <script>
+      if ('serviceWorker' in navigator && import.meta.env.PROD) {
+        addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+      }
+    </script>
+  </body>
+</html>

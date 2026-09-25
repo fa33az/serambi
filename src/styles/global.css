@@ -1,0 +1,153 @@
+@view-transition { navigation: auto; }
+
+:root {
+  --paper: #f4ede0;
+  --sheet: #f9f4ea;
+  --ink: #2b2420;
+  --soft: #74685a;
+  --faint: #b5a893;
+  --line: #ddd2be;
+  --accent: #8c2f2a;
+  --pencil: rgba(60, 52, 44, .55);
+  --shadow: rgba(60, 40, 20, .10);
+  --measure: 34rem;
+  --fs: 20px;
+  --ease: cubic-bezier(.3, .6, .2, 1);
+  color-scheme: light;
+}
+[data-mood='senja'] {
+  --paper: #eadcc2;
+  --sheet: #f0e4cd;
+  --ink: #36291e;
+  --soft: #6e5d48;
+  --faint: #a8927a;
+  --line: #cfbb9c;
+  --accent: #7a2a24;
+  --pencil: rgba(70, 50, 30, .55);
+  --shadow: rgba(70, 40, 10, .14);
+}
+[data-mood='lilin'] {
+  --paper: #1b1713;
+  --sheet: #231e19;
+  --ink: #dccdb3;
+  --soft: #948470;
+  --faint: #5c5044;
+  --line: #3a3129;
+  --accent: #c0655a;
+  --pencil: rgba(230, 200, 150, .45);
+  --shadow: rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+[data-size='s'] { --fs: 18px; }
+[data-size='l'] { --fs: 22px; }
+[data-size='xl'] { --fs: 24px; }
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { background: var(--paper); color: var(--ink); transition: background-color .9s ease, color .9s ease; }
+body {
+  min-height: 100dvh;
+  font-family: 'EB Garamond', 'Iowan Old Style', Georgia, serif;
+  font-size: var(--fs);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'kern', 'liga', 'onum';
+  background: var(--paper);
+  transition: background-color .9s ease;
+}
+
+/* serat kertas, sangat halus */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: .5;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .45 0 0 0 0 .37 0 0 0 0 .27 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-mood='lilin'] body::before { mix-blend-mode: screen; opacity: .18; }
+
+/* cahaya lilin: tepi layar menggelap, sedikit bergoyang */
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99;
+  opacity: 0;
+  transition: opacity 1.4s ease;
+  background: radial-gradient(ellipse 75% 70% at 50% 42%, transparent 40%, rgba(0, 0, 0, .5) 100%);
+}
+[data-mood='lilin'] .vignette { opacity: 1; animation: flicker 9s infinite ease-in-out; }
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  23% { opacity: .9; }
+  31% { opacity: .97; }
+  52% { opacity: .86; }
+  60% { opacity: .95; }
+  81% { opacity: .9; }
+}
+
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .2em; text-decoration-color: var(--faint); }
+a:hover { text-decoration-color: currentColor; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 1px dashed var(--soft); outline-offset: 4px; }
+::selection { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+.soft { color: var(--soft); }
+.caps { font-variant: small-caps; letter-spacing: .06em; text-transform: lowercase; }
+.label { font-size: .72rem; letter-spacing: .28em; text-transform: uppercase; color: var(--soft); }
+.orn { text-align: center; color: var(--faint); font-size: 1.1rem; user-select: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+.link {
+  color: var(--soft);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: .25em;
+  text-decoration-thickness: 1px;
+  transition: color .3s ease, text-decoration-color .3s ease;
+}
+.link:hover, .link:focus-visible { color: var(--ink); text-decoration-color: var(--faint); }
+
+/* halaman biasa (bukan pembaca) */
+.page { width: min(var(--measure), 100% - 32px); margin-inline: auto; padding: 72px 0 96px; }
+.page-top { display: flex; justify-content: space-between; align-items: baseline; font-size: .9rem; margin-bottom: 64px; }
+
+/* lembar kertas yang muncul dari bawah */
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  width: min(30rem, 100%);
+  max-height: 80dvh;
+  overflow: auto;
+  translate: -50% 100%;
+  background: var(--sheet);
+  box-shadow: 0 -1px 0 var(--line), 0 -18px 40px var(--shadow);
+  padding: 28px 28px 32px;
+  z-index: 60;
+  transition: translate .55s var(--ease), visibility 0s linear .55s;
+  visibility: hidden;
+  font-size: 1rem;
+}
+.sheet.open { translate: -50% 0; visibility: visible; transition: translate .55s var(--ease), visibility 0s; }
+.sheet h2 { font-weight: 400; font-size: .72rem; letter-spacing: .28em; text-transform: uppercase; color: var(--soft); margin-bottom: 18px; }
+.scrim { position: fixed; inset: 0; z-index: 55; background: rgba(20, 12, 5, .18); opacity: 0; pointer-events: none; transition: opacity .5s ease; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+
+@media (max-width: 600px) {
+  :root { --fs: 18px; }
+  [data-size='s'] { --fs: 16.5px; }
+  [data-size='l'] { --fs: 20px; }
+  [data-size='xl'] { --fs: 22px; }
+  .page { padding-top: 40px; }
+  .page-top { margin-bottom: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation: none !important; }
+  @view-transition { navigation: none; }
+}

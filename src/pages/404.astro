@@ -1,0 +1,15 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Halaman tidak ada">
+  <main class="lost">
+    <p class="q">“Aku tahu bahwa aku tidak tahu.”</p>
+    <p class="soft">Halaman yang kamu cari tidak ada di rak ini.</p>
+    <a class="link" href="/">Kembali ke serambi</a>
+  </main>
+</Base>
+
+<style>
+  .lost { min-height: 100dvh; display: grid; place-content: center; gap: 1rem; text-align: center; padding: 16px; }
+  .q { font-style: italic; font-size: 1.3rem; }
+</style>

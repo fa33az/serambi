@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro';
+import { books } from '../data/books';
+---
+<Base title="Tentang" description="Tentang Serambi, tempat membaca filsafat pelan-pelan.">
+  <main class="page about">
+    <div class="page-top">
+      <a class="link" href="/">← Serambi</a>
+    </div>
+
+    <h1>Tentang Serambi</h1>
+
+    <section class="prose">
+      <p>
+        Serambi adalah bagian depan rumah, tempat orang duduk sore-sore dengan teh dan sebuah buku. Nama sekolah filsafat
+        Stoa pun berasal dari sebuah serambi berpilar di Athena, tempat Zeno dulu mengajar siapa saja yang mau mampir.
+      </p>
+      <p>
+        Tempat ini dibuat untuk membaca filsafat pelan-pelan. Tidak ada akun, iklan, notifikasi, target harian, atau angka
+        persentase. Yang ada hanya beberapa buku tua yang baik, halaman yang bisa dibalik, dan sedikit ruang untuk menulis.
+      </p>
+      <p>
+        Semua yang kamu tulis dan tandai (posisi baca, garis pensil, kutipan, renungan) disimpan hanya di perangkat ini.
+        Kalau kamu membersihkan data peramban, semuanya ikut hilang, jadi sesekali unduhlah Buku Kutipanmu.
+      </p>
+    </section>
+
+    <div class="orn">❧</div>
+
+    <section class="prose">
+      <h2 class="label">Teks dan terjemahan</h2>
+      <p>
+        Semua teks bahasa Inggris di Serambi adalah terjemahan lama yang sudah menjadi domain publik, diambil dari
+        <a href="https://www.gutenberg.org/" rel="noopener">Project Gutenberg</a>. Catatan kaki penerjemah dan nomor halaman
+        cetak dihapus supaya halaman tetap bersih.
+      </p>
+      <p>
+        Terjemahan bahasa Indonesia disusun khusus untuk Serambi dari teks Inggris tersebut, dengan bantuan AI. Terjemahan dari terjemahan selalu kehilangan sesuatu. Karena itu setiap bab bisa dibuka dalam kedua bahasa,
+        paragraf demi paragraf, dan posisimu tetap terjaga saat berpindah bahasa.
+      </p>
+      <ul class="sources">
+        {books.map((b) => (
+          <li>
+            <a href={`/buku/${b.slug}/`}><em>{b.title.id}</em></a>, {b.author}.
+            <span class="soft">Terjemahan Inggris: {b.source.translator} ({b.source.year}).</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <div class="orn">❧</div>
+
+    <section class="prose">
+      <h2 class="label">Cara memakai</h2>
+      <p>
+        Ketuk sisi kanan halaman untuk maju dan sisi kiri untuk mundur, atau geser dengan jari. Di papan ketik, pakai tombol
+        panah atau spasi. Ketuk bagian tengah untuk menyembunyikan atau memunculkan tombol-tombol.
+      </p>
+      <p>
+        Tandai kalimat mana saja untuk memberinya <em>garis pensil</em>, menulis <em>catatan</em> di pinggirnya, atau
+        <em>menyalinnya</em> ke Buku Kutipan. Menyalin di sini berarti mengetik ulang kalimat itu huruf demi huruf. Memang
+        lambat, dan memang sengaja: dulu orang belajar dengan menyalin.
+      </p>
+      <p>
+        Lewat tombol <em>Aa</em>, kamu bisa memilih bahasa, ukuran huruf, suasana (Pagi, Senja, Lilin, atau ikut jam), dan
+        suara latar berupa hujan atau perapian. Semua suara dibuat langsung di perangkatmu, tanpa rekaman.
+      </p>
+      <p>Serambi juga bisa dipasang di layar utama ponsel, dan bab yang sudah pernah dibuka tetap bisa dibaca tanpa internet.</p>
+    </section>
+  </main>
+</Base>
+
+<style>
+  h1 { font-weight: 400; font-size: 2.2rem; line-height: 1.1; margin-bottom: 2rem; }
+  .prose p { text-indent: 1.4em; text-align: justify; hyphens: auto; }
+  .prose p:first-of-type { text-indent: 0; }
+  .prose .label { margin-bottom: 1rem; font-weight: 400; }
+  .about > .orn { margin: 2.4rem 0; }
+  .sources { margin-top: 1.2rem; padding-left: 1.2rem; }
+  .sources li { margin: .35rem 0; }
+  .sources li::marker { color: var(--faint); }
+</style>

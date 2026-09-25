@@ -1,0 +1,166 @@
+---
+import Base from '../../layouts/Base.astro';
+import { books, type BookMeta } from '../../data/books';
+import { chapterCount, chapterTitles, hasChapter, wordCount } from '../../lib/content';
+
+export function getStaticPaths() {
+  return books.map((b) => ({ params: { slug: b.slug }, props: { book: b } }));
+}
+
+const { book } = Astro.props as { book: BookMeta };
+const count = chapterCount(book.slug);
+const titles = chapterTitles(book.slug, 'id');
+const translated = Array.from({ length: count }, (_, i) => hasChapter(book.slug, 'id', i + 1)).filter(Boolean).length;
+const words = wordCount(book.slug, translated === count ? 'id' : 'en');
+const minutes = Math.round(words / 200);
+const readTime = minutes < 90 ? `sekitar ${Math.round(minutes / 5) * 5} menit` : `sekitar ${Math.round(minutes / 60)} jam`;
+---
+<Base title={book.title.id} description={`${book.title.id} karya ${book.author}. ${book.intro[0]}`}>
+  <main class="page book">
+    <div class="page-top">
+      <a class="link" href="/">← Serambi</a>
+      <span class="soft">{book.author}</span>
+    </div>
+
+    <div class="head">
+      <div class="cover" style={`--c:${book.spine.color};--band:${book.spine.band};view-transition-name:buku-${book.slug}`}>
+        <div class="frame">
+          <span class="c-title">{book.title.id}</span>
+          <span class="orn c-orn">❧</span>
+          <span class="c-author">{book.author}</span>
+        </div>
+      </div>
+      <div class="meta">
+        <h1>{book.title.id}</h1>
+        <p class="sub">{book.subtitle}</p>
+        <p class="by">{book.author} <span class="soft">({book.era})</span></p>
+        <a class="open" id="open" href={`/baca/${book.slug}/`}>Buka halaman pertama</a>
+        <p class="resume soft" id="resume"></p>
+      </div>
+    </div>
+
+    <section class="intro">
+      {book.intro.map((p) => <p>{p}</p>)}
+      <p class="how"><span class="label">Cara membaca</span> {book.howToRead}</p>
+    </section>
+
+    <div class="orn">❧</div>
+
+    <section class="toc" aria-labelledby="toc-h">
+      <h2 class="label" id="toc-h">Daftar isi</h2>
+      <ol>
+        {titles.map((t, i) => (
+          <li>
+            <a href={`/baca/${book.slug}/#bab-${i + 1}`} data-ch={i + 1}>
+              <span class="n">{i + 1}</span>
+              <span class="tt">{t}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="colophon">
+      <h2 class="label">Kolofon</h2>
+      <p>{book.written}</p>
+      <p>
+        Teks bahasa Inggris dari terjemahan {book.source.translator} ({book.source.year}), domain publik, diambil dari
+        <a href={book.source.url} rel="noopener">Project Gutenberg</a>.
+        {book.source.note && <> {book.source.note}</>}
+      </p>
+      <p>
+        Terjemahan bahasa Indonesia disusun untuk Serambi dari teks Inggris tersebut, dengan bantuan AI.
+        {translated < count && <> Saat ini {translated} dari {count} bab sudah tersedia dalam bahasa Indonesia.</>}
+        Kalau menemukan kalimat yang janggal, anggap itu undangan untuk membaca versi Inggrisnya juga.
+      </p>
+      <p class="soft">{count} bab · {readTime} membaca</p>
+    </section>
+  </main>
+</Base>
+
+<script>
+  import { pos, ago } from '../../scripts/store';
+  const slug = location.pathname.split('/').filter(Boolean)[1];
+  const p = pos(slug);
+  if (p) {
+    const open = document.getElementById('open')!;
+    const link = document.querySelector<HTMLAnchorElement>(`.toc a[data-ch="${p.ch}"]`);
+    open.textContent = 'Lanjutkan membaca';
+    link?.classList.add('here');
+    const title = link?.querySelector('.tt')?.textContent ?? '';
+    document.getElementById('resume')!.innerHTML =
+      `${ago(p.t)}, di ${title}` + (p.snip ? `:<br><em>“${p.snip}…”</em>` : '.');
+  }
+</script>
+
+<style>
+  .book { --measure: 40rem; }
+  .head { display: grid; grid-template-columns: 11rem 1fr; gap: 2.6rem; align-items: end; margin-bottom: 3.2rem; }
+  .cover {
+    aspect-ratio: 2 / 3;
+    background-color: var(--c);
+    background-image:
+      linear-gradient(90deg, rgba(0, 0, 0, .28), rgba(0, 0, 0, .05) 6%, transparent 9%, rgba(255, 255, 255, .04) 60%, rgba(0, 0, 0, .12)),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px);
+    border-radius: 2px 4px 4px 2px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .2), 0 18px 30px -18px var(--shadow), 6px 8px 0 -3px var(--line);
+    padding: 12px 12px 12px 18px;
+    color: #efe4cd;
+  }
+  .frame {
+    height: 100%;
+    border: 1px solid color-mix(in srgb, var(--band) 50%, #c9a86a 50%);
+    outline: 1px solid color-mix(in srgb, var(--band) 60%, #c9a86a 40%);
+    outline-offset: 3px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .7rem;
+    text-align: center;
+    padding: 1rem .6rem;
+  }
+  .c-title { font-size: .95rem; letter-spacing: .14em; text-transform: uppercase; line-height: 1.35; }
+  .c-orn { color: inherit; opacity: .6; font-size: .9rem; }
+  .c-author { font-style: italic; font-size: .82rem; opacity: .8; }
+
+  h1 { font-weight: 400; font-size: 2.3rem; line-height: 1.1; letter-spacing: -.005em; }
+  .sub { font-style: italic; color: var(--soft); margin-top: .35rem; }
+  .by { margin-top: 1rem; font-size: .95rem; }
+  .open {
+    display: inline-block;
+    margin-top: 1.6rem;
+    padding-bottom: 2px;
+    border-bottom: 1px solid var(--accent);
+    color: var(--accent);
+    text-decoration: none;
+    transition: letter-spacing .5s var(--ease);
+  }
+  .open:hover { letter-spacing: .02em; }
+  .resume { margin-top: .8rem; font-size: .9rem; line-height: 1.5; }
+
+  .intro p { text-indent: 1.4em; hyphens: auto; text-align: justify; }
+  .intro p:first-child { text-indent: 0; }
+  .intro p:first-child::first-letter { float: left; font-size: 3.1em; line-height: .86; padding: .06em .08em 0 0; color: var(--accent); }
+  .intro .how { text-indent: 0; margin-top: 1.4rem; font-style: italic; color: var(--soft); text-align: left; }
+  .intro .how .label { font-style: normal; margin-right: .6rem; }
+  .book > .orn { margin: 2.6rem 0; }
+
+  .toc ol { list-style: none; padding: 0; margin-top: 1rem; }
+  .toc a { display: flex; gap: 1rem; align-items: baseline; padding: .42rem 0; text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); transition: padding .4s var(--ease); }
+  .toc a:hover { padding-left: .4rem; }
+  .toc .n { width: 1.6rem; color: var(--faint); font-size: .9rem; font-variant-numeric: oldstyle-nums; }
+  .toc a.here .tt::after { content: '  · kamu di sini'; color: var(--accent); font-style: italic; font-size: .85rem; }
+
+  .colophon { margin-top: 3.2rem; font-size: .9rem; color: var(--soft); }
+  .colophon p { margin-top: .6rem; }
+  .colophon .label { margin-bottom: .8rem; }
+
+  @media (max-width: 600px) {
+    .head { grid-template-columns: 7.5rem 1fr; gap: 1.4rem; align-items: center; }
+    h1 { font-size: 1.7rem; }
+    .c-title { font-size: .72rem; }
+    .c-author { font-size: .68rem; }
+    .open { margin-top: 1rem; }
+  }
+</style>

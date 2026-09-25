@@ -1,0 +1,232 @@
+---
+import Base from '../layouts/Base.astro';
+import { books } from '../data/books';
+import { lines } from '../data/lines';
+import { chapterTitles } from '../lib/content';
+const chapters = Object.fromEntries(books.map((b) => [b.slug, chapterTitles(b.slug, 'id')]));
+---
+<Base>
+  <main class="door">
+    <p class="greet" id="greet" aria-live="polite">&nbsp;</p>
+
+    <nav class="shelf" aria-label="Rak buku">
+      {books.map((b) => (
+        <a
+          class="spine"
+          href={`/buku/${b.slug}/`}
+          data-slug={b.slug}
+          data-caption={`${b.title.id}, ${b.author}`}
+          style={`--c:${b.spine.color};--band:${b.spine.band};height:${b.spine.height}px;width:${b.spine.width}px;view-transition-name:buku-${b.slug}`}
+        >
+          <span class="t">{b.spineTitle ?? b.title.id}</span>
+          <span class="a">{b.author}</span>
+        </a>
+      ))}
+      <a class="spine notebook" href="/catatan/" data-caption="Buku Kutipan milikmu" style="height:170px;width:24px">
+        <span class="t">Buku Kutipan</span>
+      </a>
+    </nav>
+
+    <p class="under" id="under">&nbsp;</p>
+
+    <footer class="foot">
+      <a class="link" href="/catatan/">Buku Kutipan</a>
+      <span aria-hidden="true">·</span>
+      <a class="link" href="/tentang/">Tentang Serambi</a>
+    </footer>
+  </main>
+
+  <script is:inline type="application/json" id="lines" set:html={JSON.stringify(lines)} />
+  <script is:inline type="application/json" id="titles" set:html={JSON.stringify(Object.fromEntries(books.map((b) => [b.slug, b.title.id])))} />
+  <script is:inline type="application/json" id="chapters" set:html={JSON.stringify(chapters)} />
+</Base>
+
+<script>
+  import { get, set, pos, quotes, ago } from '../scripts/store';
+
+  const titles: Record<string, string> = JSON.parse(document.getElementById('titles')!.textContent!);
+  const chapters: Record<string, string[]> = JSON.parse(document.getElementById('chapters')!.textContent!);
+  const lines: { text: string; slug: string; ch: number }[] = JSON.parse(document.getElementById('lines')!.textContent!);
+
+  const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+
+  function greeting() {
+    const lastVisit = get<number>('visit', 0);
+    if (lastVisit && Date.now() - lastVisit > 21 * 864e5) return 'Lama tidak ke sini. Raknya masih sama.';
+    const h = new Date().getHours();
+    if (h < 4) return pick(['Sudah larut. Satu halaman saja?', 'Rumah sudah tidur. Kamu belum.', 'Jam segini, pikiran biasanya lebih jujur.']);
+    if (h < 7) return pick(['Masih subuh. Dunia belum menuntut apa-apa darimu.', 'Pagi-pagi sekali. Udaranya masih dingin.']);
+    if (h < 11) return pick(['Pagi yang pelan. Mulai dari satu paragraf.', 'Selamat pagi. Tidak perlu terburu-buru.']);
+    if (h < 15) return pick(['Siang. Duduk sebentar di sini.', 'Sedang istirahat? Satu catatan pendek saja.']);
+    if (h < 18) return pick(['Sore sudah turun pelan-pelan.', 'Tehnya sudah dingin? Tidak apa-apa.']);
+    if (h < 21) return pick(['Selamat malam. Buku-buku masih di tempatnya.', 'Harinya sudah selesai. Yang tersisa tinggal membaca.']);
+    return pick(['Malam. Rumah sudah sepi, dan buku masih terbuka.', 'Lampu meja saja sudah cukup.']);
+  }
+
+  function under(): string {
+    const last = get<string | null>('last', null);
+    const p = last ? pos(last) : null;
+    if (last && p && titles[last]) {
+      const bab = chapters[last]?.[p.ch - 1] ?? `bab ${p.ch}`;
+      return `${ago(p.t)} kamu berhenti di <a class="link" href="/baca/${last}/"><em>${titles[last]}</em>, ${bab}</a>.` +
+        (p.snip ? `<span class="snip">“${p.snip}…”</span>` : '');
+    }
+    const mine = quotes();
+    if (mine.length && Math.random() < 0.4) {
+      const q = pick(mine);
+      return `<span class="quote">“${q.text}”</span><span class="src">dari buku kutipanmu</span>`;
+    }
+    const day = Math.floor(Date.now() / 864e5);
+    const l = lines[day % lines.length];
+    return `<span class="quote">“${l.text}”</span><a class="src link" href="/baca/${l.slug}/#bab-${l.ch}">${titles[l.slug]}</a>`;
+  }
+
+  const g = document.getElementById('greet')!;
+  const u = document.getElementById('under')!;
+  g.textContent = greeting();
+  const underHtml = under();
+  u.innerHTML = underHtml;
+  set('visit', Date.now());
+  requestAnimationFrame(() => document.body.classList.add('awake'));
+
+  // saat menunjuk buku, keterangannya muncul di bawah rak
+  let timer: number | undefined;
+  document.querySelectorAll<HTMLElement>('.spine').forEach((s) => {
+    const show = () => {
+      clearTimeout(timer);
+      u.classList.add('hush');
+      timer = window.setTimeout(() => {
+        u.innerHTML = `<span class="caption">${s.dataset.caption}</span>`;
+        u.classList.remove('hush');
+      }, 180);
+    };
+    const hide = () => {
+      clearTimeout(timer);
+      u.classList.add('hush');
+      timer = window.setTimeout(() => {
+        u.innerHTML = underHtml;
+        u.classList.remove('hush');
+      }, 180);
+    };
+    s.addEventListener('pointerenter', show);
+    s.addEventListener('focus', show);
+    s.addEventListener('pointerleave', hide);
+    s.addEventListener('blur', hide);
+  });
+</script>
+
+<style>
+  .door {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: 1fr auto auto 1fr auto;
+    justify-items: center;
+    padding: 24px 16px;
+    gap: 0;
+  }
+  .greet {
+    align-self: end;
+    margin-bottom: 3.2rem;
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--soft);
+    text-align: center;
+    opacity: 0;
+    translate: 0 6px;
+    transition: opacity 1.8s ease, translate 1.8s ease;
+  }
+  :global(.awake) .greet { opacity: 1; translate: 0 0; }
+
+  .shelf {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding: 0 14px 5px;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 7px 10px -9px var(--shadow);
+    opacity: 0;
+    transition: opacity 1.6s ease .9s;
+  }
+  :global(.awake) .shelf { opacity: 1; }
+
+  .spine {
+    position: relative;
+    writing-mode: vertical-rl;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 0 16px;
+    color: #f1e7d3;
+    text-decoration: none;
+    background-color: var(--c);
+    background-image:
+      linear-gradient(90deg, rgba(0, 0, 0, .22), transparent 18%, rgba(255, 255, 255, .06) 45%, transparent 60%, rgba(0, 0, 0, .18)),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, .025) 0 1px, transparent 1px 3px);
+    border-radius: 2px 2px 1px 1px;
+    transition: translate .6s var(--ease), box-shadow .6s ease;
+  }
+  .spine::before, .spine::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 5px;
+    border-block: 1px solid color-mix(in srgb, var(--band) 70%, #c9a86a 30%);
+    opacity: .7;
+  }
+  .spine::before { top: 9px; }
+  .spine::after { bottom: 7px; }
+  .spine .t { font-size: .7rem; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; }
+  .spine .a { font-size: .62rem; font-style: italic; opacity: .72; white-space: nowrap; }
+  .spine:hover, .spine:focus-visible { translate: 0 -12px; box-shadow: 0 12px 0 -6px var(--shadow); outline: none; }
+
+  .spine.notebook {
+    --c: #d8c9a8;
+    --band: #b59e74;
+    margin-left: 10px;
+    color: #4b3f31;
+    rotate: 7deg;
+    transform-origin: bottom left;
+    background-image:
+      linear-gradient(90deg, rgba(0, 0, 0, .12), transparent 25%, transparent 75%, rgba(0, 0, 0, .1)),
+      repeating-linear-gradient(0deg, rgba(90, 70, 40, .05) 0 1px, transparent 1px 4px);
+  }
+  [data-mood='lilin'] .spine.notebook { --c: #8c7b5e; color: #211b14; }
+  .spine.notebook .t { text-transform: none; letter-spacing: .06em; font-size: .7rem; }
+  .spine.notebook:hover, .spine.notebook:focus-visible { rotate: 3deg; translate: 0 -6px; }
+
+  .under {
+    margin-top: 2.6rem;
+    max-width: 30rem;
+    min-height: 5.5rem;
+    text-align: center;
+    font-size: 1rem;
+    color: var(--soft);
+    line-height: 1.55;
+    opacity: 0;
+    transition: opacity 1.6s ease 1.8s;
+  }
+  :global(.awake) .under { opacity: 1; }
+  .under.hush { opacity: 0 !important; transition: opacity .18s ease; }
+  .under :global(.quote) { display: block; font-style: italic; color: var(--ink); opacity: .85; }
+  .under :global(.src) { display: inline-block; margin-top: .5rem; font-size: .82rem; letter-spacing: .08em; }
+  .under :global(.snip) { display: block; margin-top: .35rem; font-style: italic; }
+  .under :global(.caption) { font-style: italic; color: var(--ink); }
+
+  .foot {
+    display: flex;
+    gap: .8rem;
+    font-size: .88rem;
+    color: var(--faint);
+    padding-bottom: 8px;
+    opacity: 0;
+    transition: opacity 1.6s ease 2.4s;
+  }
+  :global(.awake) .foot { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .greet { font-size: 1.15rem; margin-bottom: 2.4rem; }
+    .spine { transform-origin: bottom; }
+    .shelf { scale: .86; transform-origin: bottom center; }
+  }
+</style>
