@@ -1,6 +1,11 @@
-# Serambi
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="preview/logo-dark.svg">
+    <img src="preview/logo-light.svg" alt="Serambi" width="300">
+  </picture>
+</p>
 
-A quiet place to read philosophy, slowly.
+<p align="center"><em>A quiet place to read philosophy, slowly.</em></p>
 
 Serambi is a small reading site for classic philosophy texts, available in Indonesian and English. No accounts, no ads, no tracking. Just a bookshelf, pages you can turn, and a little space to write.
 
